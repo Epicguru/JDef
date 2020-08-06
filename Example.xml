@@ -1,0 +1,54 @@
+<Root>
+  <Name>Name</Name>
+  <Float>123.98</Float>
+  <!-- Some dumb comment here. -->
+
+  <Obj>
+    <X>5</X>
+    <Y>7</Y>
+  </Obj>
+  <Inner>
+    <Name>Some inner version.</Name>
+    <Obj>
+      <X>12</X>
+      <Y>96</Y>
+    </Obj>
+  </Inner>
+  <Objects>
+    <li>Thing</li>
+    <li>Another thing</li>
+    <li>Third thing</li>
+  </Objects>
+  <Bytes mode="123">
+    <li>5</li>
+    <li>6</li>
+    <li>7</li>
+  </Bytes>
+  <Nested>
+    <li>
+      <li>Hello there.</li>
+      <li>Hello there 2.</li>
+      <li>Hello there 3.</li>
+    </li>
+    <li>
+      <li>Eggs dee.</li>
+      <li>More stuff.</li>
+    </li>
+  </Nested>
+  <Dict>
+    <pair key= "James">420.25</pair>
+    <pair key= "Curtis">101</pair>
+    <pair key= "Zak">53.001</pair>
+  </Dict>
+  <Subs>
+    <li>
+      <Name>Cooler daniel</Name>
+    </li>
+    <li class="XmlTests.SubType">
+      <Name>Twisted daniel</Name>
+    </li>
+  </Subs>
+  <Disposable class="XmlTests.SubType">
+    <Name>Memelord</Name>
+  </Disposable>
+</Root>
