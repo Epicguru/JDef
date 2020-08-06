@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29924.181
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JDef", "JDef\JDef.csproj", "{8871B8C4-76CC-4394-8FD7-6DBD19CDB4A4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JXml", "JXml\JXml.csproj", "{04548B14-489F-49E6-B1F4-F10C6B4F9976}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8871B8C4-76CC-4394-8FD7-6DBD19CDB4A4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8871B8C4-76CC-4394-8FD7-6DBD19CDB4A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8871B8C4-76CC-4394-8FD7-6DBD19CDB4A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8871B8C4-76CC-4394-8FD7-6DBD19CDB4A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{04548B14-489F-49E6-B1F4-F10C6B4F9976}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{04548B14-489F-49E6-B1F4-F10C6B4F9976}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{04548B14-489F-49E6-B1F4-F10C6B4F9976}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{04548B14-489F-49E6-B1F4-F10C6B4F9976}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9C94F365-58CB-4BCC-9FEB-0A144FBB1ABE}
+	EndGlobalSection
+EndGlobal
