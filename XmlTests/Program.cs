@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace XmlTests
@@ -11,7 +12,18 @@ namespace XmlTests
 
             var controller = new XmlController();
 
-            var created = controller.Deserialize<CustomType>(File.ReadAllText(@"C:\Users\James.000\Documents\Dev\C#\XmlTests\Example.xml"), null);
+            var created = controller.Deserialize<CustomType>(File.ReadAllText(@"D:\Dev\C#\XmlDefs\Example.xml"), null);
+            var created2 = controller.Deserialize<List<string>>(File.ReadAllText(@"D:\Dev\C#\XmlDefs\Example2.xml"), null);
+            var fromExisting = controller.Deserialize<CustomType>(File.ReadAllText(@"D:\Dev\C#\XmlDefs\Example.xml"), new CustomType(){Float = 5f, Inner = new CustomType(){Number = 123}});
+
+            Console.WriteLine("Float: " + fromExisting.Float);
+            Console.WriteLine("Inner.Name: " + fromExisting.Inner.Name);
+            Console.WriteLine("Inner.Number: " + fromExisting.Inner.Number);
+
+            foreach(var str in created2)
+            {
+                Console.WriteLine("  *" + str);
+            }
 
             Console.WriteLine("Result:");
             Console.WriteLine(created.Float);

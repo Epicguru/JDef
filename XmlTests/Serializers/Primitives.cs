@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 using System.Xml;
 
 namespace XmlTests.Serializers
@@ -222,6 +223,36 @@ namespace XmlTests.Serializers
                 return value;
 
             throw MakeException($"Failed to parse '{text}' as a char.");
+        }
+    }
+
+    public class Vector2Parser : PrimitiveParser
+    {
+        public override Type TargetType { get; } = typeof(Vector2);
+
+        public override object Deserialize(XmlNode node)
+        {
+            string text = node.Value;
+
+            int index;
+            if ((index = text.IndexOf(',')) == -1)
+                throw MakeException("Incorrect format: expected (x, y)");
+
+            string start = text.Substring(0, index).Trim();
+            string end = text.Substring(index + 1).Trim();
+
+            if (start.StartsWith("("))
+                start = start.Substring(1);
+            if (end.EndsWith(")"))
+                end = end.Substring(0, end.Length - 1);
+
+            if (!float.TryParse(start, out float x))
+                throw MakeException($"Failed to parse X value in Vector2: '{start}'");
+
+            if (!float.TryParse(end, out float y))
+                throw MakeException($"Failed to parse Y value in Vector2: '{end}'");
+
+            return new Vector2(x, y);
         }
     }
 }

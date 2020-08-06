@@ -1,25 +1,20 @@
+<!-- Comment #lol #crazy-->
 <Root>
-  <Name>Name</Name>
+  <Name>Lol</Name>
   <Float>123.98</Float>
   <!-- Some dumb comment here. -->
 
-  <Obj>
-    <X>5</X>
-    <Y>7</Y>
-  </Obj>
+  <Obj><!-- asd -->(12, 13)</Obj>
   <Inner>
     <Name>Some inner version.</Name>
-    <Obj>
-      <X>12</X>
-      <Y>96</Y>
-    </Obj>
+    <Obj>15, 16</Obj>
   </Inner>
   <Objects>
     <li>Thing</li>
     <li>Another thing</li>
     <li>Third thing</li>
   </Objects>
-  <Bytes mode="123">
+  <Bytes mode="merge">
     <li>5</li>
     <li>6</li>
     <li>7</li>
@@ -35,10 +30,10 @@
       <li>More stuff.</li>
     </li>
   </Nested>
-  <Dict>
-    <pair key= "James">420.25</pair>
-    <pair key= "Curtis">101</pair>
-    <pair key= "Zak">53.001</pair>
+  <Dict mode="subtract">
+    <pair key= "James">0</pair>
+    <pair key= "Curtis">0</pair>
+    <pair key= "Zak">0</pair>
   </Dict>
   <Subs>
     <li>

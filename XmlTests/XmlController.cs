@@ -30,6 +30,7 @@ namespace XmlTests
             AddRootTypeSerializer(new StringParser());
             AddRootTypeSerializer(new BoolParser());
             AddRootTypeSerializer(new CharParser());
+            AddRootTypeSerializer(new Vector2Parser());
         }
 
         public void AddRootTypeSerializer(IRootTypeSerializer serializer)
@@ -93,7 +94,7 @@ namespace XmlTests
             Stopwatch watch = new Stopwatch();
             watch.Start();
 
-            T returnValue = (T)CreateAndPopulate(toFill, doc.FirstChild, typeof(T));
+            T returnValue = (T)CreateAndPopulate(toFill, doc.FirstContentNode(), typeof(T));
 
             watch.Stop();
             Console.WriteLine($"Took {watch.Elapsed.TotalMilliseconds:F2} ms");
@@ -108,13 +109,13 @@ namespace XmlTests
                     var newType = Type.GetType(customClassName, false, true);
                     if(newType == null)
                     {
-                        Console.WriteLine($"[ERROR] Node {rootNode.Name}: Could not find custom class '{customClassName}' for node {rootNode.Name}. Node will be ignored.");
+                        Console.WriteLine($"[ERROR] Node {rootNode.GetXPath()}: Could not find custom class '{customClassName}' for node {rootNode.Name}. Node will be ignored.");
                         return null;
                     }
                     if (!type.IsAssignableFrom(newType))
                     {
                         string problem = type.IsInterface ? "does not implement interface" : "is not a subclass of";
-                        Console.WriteLine($"[ERROR] Node {rootNode.Name}: {newType.FullName} {problem} {type.FullName}. Node will be ignored.");
+                        Console.WriteLine($"[ERROR] Node {rootNode.GetXPath()}: {newType.FullName} {problem} {type.FullName}. Node will be ignored.");
                         return null;
                     }
 
@@ -123,7 +124,7 @@ namespace XmlTests
                 if(type.IsAbstract || type.IsInterface)
                 {
                     string problem = type.IsInterface ? "an interface" : "an abstract class";
-                    Console.WriteLine($"[ERROR] Node {rootNode.Name}: {type.FullName} is {problem} and so cannot be instantiated. Please use the class='typeName' attribute to specify a concrete class. Node will be ignored.");
+                    Console.WriteLine($"[ERROR] Node {rootNode.GetXPath()}: {type.FullName} is {problem} and so cannot be instantiated. Please use the class='typeName' attribute to specify a concrete class. Node will be ignored.");
                     return null;
                 }
 
@@ -159,7 +160,7 @@ namespace XmlTests
                     string attr = rootNode.TryGetAttribute("mode");
                     if(attr != null)
                     {
-                        Console.WriteLine($"[ERROR] Node {rootNode.Name}: Arrays cannot use merge modes. To use merge modes, change it to a List<{arrayType.Name}>.");
+                        Console.WriteLine($"[ERROR] Node {rootNode.GetXPath()}: Arrays cannot use merge modes. To use merge modes, change it to a List<{arrayType.Name}>.");
                     }
 
                     return created;
@@ -171,6 +172,7 @@ namespace XmlTests
 
                     Type listType = type.GetGenericArguments()[0];
                     IList created = (IList)CreateInstance(typeof(List<>).MakeGenericType(listType));
+                    bool allowNullValues = listType.IsNullable();
                     for (int i = 0; i < rootNode.ChildNodes.Count; i++)
                     {
                         var node = rootNode.ChildNodes.Item(i);
@@ -178,6 +180,11 @@ namespace XmlTests
                         {
                             object atPosition = CreateAndPopulate(null, node, listType);
 
+                            if (atPosition == null && !allowNullValues)
+                            {
+                                Console.WriteLine($"[ERROR] List {rootNode.GetXPath()} has a null value. This is not valid because the list type is {listType.Name}.");
+                                continue;
+                            }
                             created.Add(atPosition);
                         }
                     }
@@ -188,7 +195,7 @@ namespace XmlTests
                     ListMergeMode mode = rootNode.TryParseAttributeEnum<ListMergeMode>("mode") ?? ListMergeMode.Merge;
                     if((old.IsFixedSize || old.IsReadOnly) && mode != ListMergeMode.Replace)
                     {
-                        Console.WriteLine($"[ERROR] Node {rootNode.Name}: This List<{listType.Name}> uses merge mode {mode}, but the list instance is read-only. New list will replace old values.");
+                        Console.WriteLine($"[ERROR] Node {rootNode.GetXPath()}: This List<{listType.Name}> uses merge mode {mode}, but the list instance is read-only. New list will replace old values.");
                         mode = ListMergeMode.Replace;
                     }
 
@@ -199,6 +206,11 @@ namespace XmlTests
 
                 if (isDictType)
                 {
+                    if (!type.IsGenericType)
+                    {
+                        Console.WriteLine($"[ERROR] Node {rootNode.GetXPath()}: Non-generic dictionary type {type.Name} is not supported.");
+                        return null;
+                    }
                     Type[] dictParams = type.GetGenericArguments();
                     Type keyType = dictParams[0];
                     Type valueType = dictParams[1];
@@ -208,7 +220,7 @@ namespace XmlTests
                     bool useCompact = keyType == typeof(string) && (attrCompact == null || attrCompact.Value);
                     if(keyType != typeof(string) && attrCompact != null && attrCompact.Value)
                     {
-                        Console.WriteLine($"[ERROR] Node {rootNode.Name} has compact='true', but the dictionary has keys of type {keyType.Name}. They must be Strings to use compact mode.");
+                        Console.WriteLine($"[ERROR] Node {rootNode.GetXPath()} has compact='true', but the dictionary has keys of type {keyType.Name}. They must be Strings to use compact mode.");
                     }
                     bool allowNullValues = valueType.IsNullable();
                     if (useCompact)
@@ -223,19 +235,19 @@ namespace XmlTests
                             string key = node.TryGetAttribute("key");
                             if (key == null)
                             {
-                                Console.WriteLine($"[ERROR] Dictionary {rootNode.Name} has element at index {i} that does not have a key attribute, such as key='hello'. Compact mode is enabled. Use compact='false' to disable compact mode on this dictionary.");
+                                Console.WriteLine($"[ERROR] Dictionary {rootNode.GetXPath()} has element at index {i} that does not have a key attribute, such as key='hello'. Compact mode is enabled. Use compact='false' to disable compact mode on this dictionary.");
                                 continue;
                             }
                             if (created.Contains(key))
                             {
-                                Console.WriteLine($"[ERROR] Duplicate key in dictionary {rootNode.Name}: '{key}'");
+                                Console.WriteLine($"[ERROR] Duplicate key in dictionary {rootNode.GetXPath()}: '{key}'");
                                 continue;
                             }
                             object value = CreateAndPopulate(null, node, valueType);
 
                             if(value == null && !allowNullValues)
                             {
-                                Console.WriteLine($"[ERROR] Dictionary {rootNode.Name} has a null value. This is not valid because the value type is {valueType.Name}.");
+                                Console.WriteLine($"[ERROR] Dictionary {rootNode.GetXPath()} has a null value. This is not valid because the value type is {valueType.Name}.");
                                 continue;
                             }
 
@@ -291,23 +303,56 @@ namespace XmlTests
                                 expectKey = true;
                                 if (created.Contains(lastKey))
                                 {
-                                    Console.WriteLine($"[ERROR] Duplicate key in dictionary {rootNode.Name}: '{lastKey}'");
+                                    Console.WriteLine($"[ERROR] Duplicate key in dictionary {rootNode.GetXPath()}: '{lastKey}'");
                                     lastKey = null;
                                     continue;
                                 }
                                 object value = CreateAndPopulate(null, node, valueType);
+                                if (value == null && !allowNullValues)
+                                {
+                                    Console.WriteLine($"[ERROR] Dictionary {rootNode.GetXPath()} has a null value. This is not valid because the value type is {valueType.Name}.");
+                                    continue;
+                                }
                                 created.Add(lastKey, value);
                                 lastKey = null;
                             }
                         }
                     }
-                    return created;
+
+                    if(!(existing is IDictionary oldDict))
+                        return created;
+
+                    ListMergeMode mode = rootNode.TryParseAttributeEnum<ListMergeMode>("mode") ?? ListMergeMode.Merge;
+                    if ((oldDict.IsFixedSize || oldDict.IsReadOnly) && mode != ListMergeMode.Replace)
+                    {
+                        Console.WriteLine($"[ERROR] Node {rootNode.Name}: This Dictionary<{keyType.Name}, {valueType.Name}> uses merge mode {mode}, but the dictioary instance is read-only. New dictionary will replace old values.");
+                        mode = ListMergeMode.Replace;
+                    }
+
+                    ListMergeUtils.Combine(oldDict, created, mode);
+
+                    return oldDict;
                 }
 
                 if (isBasic)
                 {
-                    var fromLoader = loader.Deserialize(rootNode.FirstChild);
-                    return fromLoader;
+                    var firstChild = rootNode.FirstContentNode();
+                    if (firstChild == null)
+                    {
+                        Console.WriteLine($"[ERROR] Null value (empty tag) in node {rootNode.GetXPath()}. Expected a {loader.TargetType.Name}.");
+                        return null;
+                    }
+
+                    try
+                    {
+                        var fromLoader = loader.Deserialize(firstChild);
+                        return fromLoader;
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"[ERROR] Exception deserializing value '{firstChild.InnerText}' as a {loader.TargetType.Name} using loader {loader.GetType().Name} for node {firstChild.GetXPath()}:\n{e}");
+                        return null;
+                    }
                 }
                 else
                 {
@@ -321,6 +366,11 @@ namespace XmlTests
                         var node = children.Item(i);
 
                         //Console.WriteLine($"[{node.NodeType}] {node.Name}: {node.Value}");
+                        if(node.NodeType != XmlNodeType.Element && node.NodeType != XmlNodeType.Comment)
+                        {
+                            // You should not be here... Most likely a text. However, the xml loaded correctly, so it might be safe to ignore with just a warning.
+                            Console.WriteLine($"Unexpected node of type '{node.NodeType}' at {node.GetXPath()}. Content: '{node.Value?.Trim()}'. Please remove.");
+                        }
                         if (node.NodeType != XmlNodeType.Element)
                             continue;
 
@@ -328,7 +378,7 @@ namespace XmlTests
                         var field = GetField(fieldName, type);
                         if (!field.IsValid)
                         {
-                            //Console.WriteLine($"Error: Failed to find field '{type.FullName}.{fieldName}'");
+                            Console.WriteLine($"Error: Failed to find field '{type.FullName}.{fieldName}'");
                             continue;
                         }
 

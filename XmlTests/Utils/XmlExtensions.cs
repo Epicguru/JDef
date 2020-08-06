@@ -52,25 +52,50 @@ namespace XmlTests.Utils
             if (raw == null)
                 return null;
 
+            raw = raw.Trim();
+
             Type enumType = typeof(T);
 
-            try
+            if (Enum.TryParse(raw, true, out T res))
             {
-                object obj = Enum.Parse(enumType, raw, true);
-                return (T)obj;
-            }
-            catch
-            {
-                // Try to parse enum from long integer.
-                if(long.TryParse(raw, out long longInt))
+                // TryParse will return true even for out of range integers (in string form, such as "1234").
+                // So check that the returned value is in fact a real enum value.
+                if (Enum.IsDefined(enumType, res.ToString()))
                 {
-                    if (Enum.IsDefined(enumType, longInt))
-                        return (T)Enum.ToObject(enumType, (object)longInt);
+                    return res;
                 }
             }
 
+            if (long.TryParse(raw, out long result))
+            {
+                var targetType = enumType.GetEnumUnderlyingType();
+                object finalValue = result;
+                if(targetType != typeof(long))
+                {
+                    try
+                    {
+                        finalValue = Convert.ChangeType(result, targetType);
+                    }
+                    catch
+                    {
+                        ReportAttributeError(node, attributeName, raw, $"a valid enum name or index. {finalValue} is not a valid index (index type is {targetType.Name})");
+                        return null;
+                    }
+                }
 
-            ReportAttributeError(node, attributeName, raw, "an enum name or index");
+                if (Enum.IsDefined(enumType, finalValue))
+                {
+                    return (T)Enum.ToObject(enumType, finalValue);
+                }
+                else
+                {
+                    ReportAttributeError(node, attributeName, raw, $"a valid enum name or index. {finalValue} is not a valid index");
+                    return null;
+                }
+            }
+            
+
+            ReportAttributeError(node, attributeName, raw, "a valid enum name or index");
             return null;
         }
 
@@ -82,6 +107,69 @@ namespace XmlTests.Utils
                 return true; // Nullable<T>
 
             return false; // value-type
+        }
+
+        public static string GetXPath(this XmlNode node)
+        {
+            if (node == null)
+                return null;
+
+            string path = "/" + node.Name;
+
+            if (node.NodeType == XmlNodeType.Text)
+            {
+                var old = node;
+                node = node.ParentNode;
+                path = "/" + node.Name;
+                path += "/" + old.Name;
+            }
+
+            if (node.ParentNode is XmlNode parentNode)
+            {
+                // Gets the position within the parent element.
+                // However, this position is irrelevant if the element is unique under its parent:
+                XmlNodeList siblings = parentNode.SelectNodes(node.Name);
+                if (siblings != null && siblings.Count > 1) // There's more than 1 element with the same name
+                {
+                    int position = 1;
+                    foreach (XmlElement sibling in siblings)
+                    {
+                        if (sibling == node)
+                            break;
+
+                        position++;
+                    }
+
+                    path = path + "[" + position + "]";
+                }
+
+                // Climbing up to the parent elements:
+                if(parentNode.NodeType == XmlNodeType.Element)
+                    path = parentNode.GetXPath() + path;
+            }
+
+            if (path.StartsWith("/"))
+                path = path.Substring(1);
+            return path;
+        }
+
+        public static XmlNode FirstContentNode(this XmlNode node)
+        {
+            if (node == null)
+                return null;
+
+            var children = node.ChildNodes;
+            if (children.Count == 0)
+                return null;
+
+            for (int i = 0; i < children.Count; i++)
+            {
+                var child = children.Item(i);
+                if (child.NodeType == XmlNodeType.Element || child.NodeType == XmlNodeType.Text)
+                    return child;
+            }
+
+            return null;
         }
     }
 }
