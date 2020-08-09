@@ -1,17 +1,19 @@
-﻿using System;
+﻿using JXml.Serializers;
+using JXml.Utils;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Xml;
-using JXml.Serializers;
-using JXml.Utils;
 
 namespace JXml
 {
-    public class XmlController
+    public class XmlController : IDisposable
     {
         private Dictionary<Type, IRootTypeSerializer> rootSerializers = new Dictionary<Type, IRootTypeSerializer>();
+        private Dictionary<string, FieldWrapper> cachedFields = new Dictionary<string, FieldWrapper>();
+        private XmlDocument doc = new XmlDocument();
 
         public XmlController()
         {
@@ -87,14 +89,13 @@ namespace JXml
 
         public T Deserialize<T>(string xml, T toFill) where T : class
         {
-            IList list = new List<string>();
-            XmlDocument doc = new XmlDocument();
             doc.LoadXml(xml);
 
             Stopwatch watch = new Stopwatch();
             watch.Start();
 
-            T returnValue = (T)CreateAndPopulate(toFill, doc.FirstContentNode(), typeof(T));
+            Type rootType = toFill == null ? typeof(T) : toFill.GetType();
+            T returnValue = (T)CreateAndPopulate(toFill, doc.FirstContentNode(), rootType);
 
             watch.Stop();
             Console.WriteLine($"Took {watch.Elapsed.TotalMilliseconds:F2} ms");
@@ -131,7 +132,7 @@ namespace JXml
                 var loader = GetRootTypeSerializer(type);
                 bool isBasic = loader != null;
                 bool isArrayType = IsArrayType(type);
-                bool isListType = IsListType(type);
+                bool isCollectionType = IsListType(type);
                 bool isDictType = IsDictionaryType(type);
 
                 if (isArrayType)
@@ -166,12 +167,18 @@ namespace JXml
                     return created;
                 }
 
-                if (isListType)
+                if (isCollectionType)
                 {
+                    if (!type.IsGenericType)
+                    {
+                        Console.WriteLine($"[ERROR] Node {rootNode.GetXPath()}: Non-generic list type {type.Name} is not supported.");
+                        return null;
+                    }
+
                     IList old = existing as IList;
 
                     Type listType = type.GetGenericArguments()[0];
-                    IList created = (IList)CreateInstance(typeof(List<>).MakeGenericType(listType));
+                    IList created = (IList)CreateInstance(type);
                     bool allowNullValues = listType.IsNullable();
                     for (int i = 0; i < rootNode.ChildNodes.Count; i++)
                     {
@@ -215,7 +222,7 @@ namespace JXml
                     Type keyType = dictParams[0];
                     Type valueType = dictParams[1];
 
-                    IDictionary created = (IDictionary) CreateInstance(typeof(Dictionary<,>).MakeGenericType(dictParams));
+                    IDictionary created = (IDictionary) CreateInstance(type);
                     bool? attrCompact = rootNode.TryParseAttributeBool("compact");
                     bool useCompact = keyType == typeof(string) && (attrCompact == null || attrCompact.Value);
                     if(keyType != typeof(string) && attrCompact != null && attrCompact.Value)
@@ -400,7 +407,7 @@ namespace JXml
 
         private bool IsListType(Type t)
         {
-            return typeof(IList).IsAssignableFrom(t);
+            return typeof(ICollection).IsAssignableFrom(t);
         }
 
         private bool IsDictionaryType(Type t)
@@ -428,13 +435,26 @@ namespace JXml
             if (type == null || fieldName == null)
                 return default;
 
+            string path = type.FullName + fieldName;
+            if (cachedFields.TryGetValue(path, out var wrapper))
+                return wrapper;
+
             var field = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public);
             if (field != null)
-                return new FieldWrapper(field);
+            {
+                var w = new FieldWrapper(field);
+                cachedFields.Add(path, w);
+                return w;
+            }
             var prop = type.GetProperty(fieldName, BindingFlags.Instance | BindingFlags.Public);
             if (prop != null)
-                return new FieldWrapper(prop);
+            {
+                var w = new FieldWrapper(prop);
+                cachedFields.Add(path, w);
+                return w;
+            }
 
+            cachedFields.Add(path, default);
             return default;
         }
 
@@ -442,6 +462,9 @@ namespace JXml
         {
             if (!wrapper.IsValid)
                 throw new Exception("Field wrapper is invalid.");
+
+            if (wrapper.HasIgnoreAttribute)
+                throw new Exception($"Field '{wrapper}' has an [XmlIgnore] attribute, so cannot be written to from xml.");
 
             if (wrapper.IsField)
             {
@@ -468,6 +491,15 @@ namespace JXml
                     return wrapper.Property.GetValue(obj);
                 return null;
             }
+        }
+
+        public void Dispose()
+        {
+            doc = null;
+            rootSerializers?.Clear();
+            rootSerializers = null;
+            cachedFields?.Clear();
+            cachedFields = null;
         }
     }
 }

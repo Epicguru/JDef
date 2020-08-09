@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Xml.Serialization;
 
 namespace JXml
 {
@@ -29,6 +30,25 @@ namespace JXml
 
         public FieldInfo Field { get; }
         public PropertyInfo Property { get; }
+        public bool HasIgnoreAttribute
+        {
+            get
+            {
+                if(_isIgnoreChecked == false)
+                {
+                    if (IsField)
+                        _isIgnore = Field.GetCustomAttribute<XmlIgnoreAttribute>() != null;
+                    if (IsProperty)
+                        _isIgnore = Property.GetCustomAttribute<XmlIgnoreAttribute>() != null;
+                    _isIgnoreChecked = true;
+                }
+
+                return _isIgnore;
+            }
+        }
+
+        private bool _isIgnore;
+        private bool _isIgnoreChecked;
 
         public Type FieldType
         {
@@ -46,12 +66,27 @@ namespace JXml
         {
             this.Field = field;
             this.Property = null;
+            _isIgnore = false;
+            _isIgnoreChecked = false;
         }
 
         public FieldWrapper(PropertyInfo property)
         {
             this.Field = null;
             this.Property = property;
+            _isIgnore = false;
+            _isIgnoreChecked = false;
+        }
+
+        public override string ToString()
+        {
+            if (!IsValid)
+                return "[Invalid Field Wrapper]";
+
+            string path = IsField ? Field.DeclaringType.FullName : Property.DeclaringType.FullName;
+            path = $"{path}.{(IsField ? Field.Name : Property.Name)}";
+            string ignored = HasIgnoreAttribute ? "(XmlIgnore)" : string.Empty;
+            return $"[{(IsField ? "Field" : "Property")}] {path} {ignored}";
         }
     }
 }

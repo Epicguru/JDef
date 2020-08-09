@@ -4,17 +4,17 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{8871B8C4-76CC-4394-8FD7-6DBD19CDB4A4}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>JDef</RootNamespace>
-    <AssemblyName>JDef</AssemblyName>
+    <ProjectGuid>{F35C8D79-88C2-4B14-9B26-0A55FC3E307F}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Testbed</RootNamespace>
+    <AssemblyName>Testbed</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -24,6 +24,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -42,13 +43,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Def.cs" />
-    <Compile Include="DefDatabase.cs" />
-    <Compile Include="DefLoader.cs" />
-    <Compile Include="PreProcessedDef.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\JDef\JDef.csproj">
+      <Project>{8871b8c4-76cc-4394-8fd7-6dbd19cdb4a4}</Project>
+      <Name>JDef</Name>
+    </ProjectReference>
     <ProjectReference Include="..\JXml\JXml.csproj">
       <Project>{04548b14-489f-49e6-b1f4-f10c6b4f9976}</Project>
       <Name>JXml</Name>

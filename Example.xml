@@ -1,5 +1,5 @@
 <!-- Comment #lol #crazy-->
-<Root>
+<Root class="Testbed.ExampleDef" parent="SomeParent" abstract="true">
   <Name>Lol</Name>
   <Float>123.98</Float>
   <!-- Some dumb comment here. -->
@@ -39,11 +39,11 @@
     <li>
       <Name>Cooler daniel</Name>
     </li>
-    <li class="XmlTests.SubType">
+    <li class="JXml.SubType">
       <Name>Twisted daniel</Name>
     </li>
   </Subs>
-  <Disposable class="XmlTests.SubType">
+  <Disposable class="JXml.SubType">
     <Name>Memelord</Name>
   </Disposable>
 </Root>

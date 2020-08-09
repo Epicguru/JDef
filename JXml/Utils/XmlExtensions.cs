@@ -131,7 +131,7 @@ namespace JXml.Utils
                 XmlNodeList siblings = parentNode.SelectNodes(node.Name);
                 if (siblings != null && siblings.Count > 1) // There's more than 1 element with the same name
                 {
-                    int position = 1;
+                    int position = 0;
                     foreach (XmlElement sibling in siblings)
                     {
                         if (sibling == node)
