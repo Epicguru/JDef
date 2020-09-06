@@ -21,11 +21,44 @@ namespace JDef
     /// Create instance of final C# type.
     /// Load sequentially into instance of final type.
     /// </summary>
-    public class DefLoader
+    public class DefLoader : IDisposable
     {
         private List<PreProcessedDef> rawData = new List<PreProcessedDef>();
         private Dictionary<string, int> nameToRawDataIndex = new Dictionary<string, int>();
-        private XmlController controller = new XmlController();
+        private XmlController controller;
+        private DefDatabase database;
+
+        public DefLoader(DefDatabase database)
+        {
+            this.database = database ?? throw new ArgumentNullException(nameof(database));
+            controller = new XmlController();
+            controller.AddCustomResolver(typeof(Def), DefResolver);
+        }
+
+        private object DefResolver(CustomResolverArgs args)
+        {
+            if (!(args.RootObject is Def def))
+                throw new Exception("Def field defined when loaded object is not Def!? Should never happen.");
+
+            if (!args.Field.IsValid)
+                throw new Exception("Field not found to put def into. Should never happen.");
+
+            string defName = args.XmlNode.InnerXml;
+            if (string.IsNullOrWhiteSpace(defName))
+                throw new Exception("Null or blank def name! Cannot load def reference.");
+
+            def.AddPostProcessAction(d =>
+            {
+                Def found = database.GetNamed(defName);
+                Console.WriteLine($"Found: {found.Name}");
+                if (args.Field.IsField)
+                {
+                    args.Field.Field.SetValue(args.ParentObject, found);
+                }
+            });
+
+            return null;
+        }
 
         public void Load(IEnumerable<string> xmlData)
         {
@@ -106,7 +139,7 @@ namespace JDef
             foreach(var index in concreteTypes)
             {
                 var raw = rawData[index];
-                int duplicateEntry = ResolveParents(treeIndices, raw.ClassName);
+                int duplicateEntry = ResolveParents(treeIndices, raw.Name);
                 if (duplicateEntry != -1)
                 {
                     var rawDupe = rawData[duplicateEntry];
@@ -165,6 +198,10 @@ namespace JDef
                 defs.Add(instance);
             }
 
+            // Clear pre-processed list, because they have been processed now!
+            rawData.Clear();
+            nameToRawDataIndex.Clear();
+
             return defs;
         }
 
@@ -204,9 +241,9 @@ namespace JDef
                 var raw = rawData[index];
                 if(raw.ClassName != null)
                 {
-                    var type = ResolveType(raw.ClassName);
+                    var type = TypeResolver.Resolve(raw.ClassName);
                     if (type == null)
-                        throw new Exception($"Failed to resolve type '{raw.ClassName}' (from def {raw.Name}) for child def {defName}.");
+                        throw new Exception($"Failed to resolve type '{raw.ClassName}' for def {defName}.");
 
                     if (current == null)
                     {
@@ -228,9 +265,14 @@ namespace JDef
             return Activator.CreateInstance(type, true);
         }
 
-        private Type ResolveType(string name)
+        public void Dispose()
         {
-            return Type.GetType(name, false, true);
+            rawData?.Clear();
+            rawData = null;
+            nameToRawDataIndex?.Clear();
+            nameToRawDataIndex = null;
+            controller?.Dispose();
+            controller = null;
         }
     }
 }

@@ -1,0 +1,10 @@
+<Farm parent="ProductionBase">
+    <Rate>22</Rate>
+    <Products>
+        <li>Cabbage</li>
+        <li>Carrot</li>
+        <li>Wheat</li>
+        <li>Corn</li>
+    </Products>
+    <OtherDef>Farm</OtherDef>
+</Farm>

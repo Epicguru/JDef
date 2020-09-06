@@ -14,6 +14,7 @@ namespace JXml
         private Dictionary<Type, IRootTypeSerializer> rootSerializers = new Dictionary<Type, IRootTypeSerializer>();
         private Dictionary<string, FieldWrapper> cachedFields = new Dictionary<string, FieldWrapper>();
         private XmlDocument doc = new XmlDocument();
+        private Dictionary<Type, Func<CustomResolverArgs, object>> customResolvers = new Dictionary<Type, Func<CustomResolverArgs, object>>();
 
         public XmlController()
         {
@@ -87,12 +88,43 @@ namespace JXml
             rootSerializers.Remove(type);
         }
 
+        public void AddCustomResolver(Type type, Func<CustomResolverArgs, object> func)
+        {
+            if (customResolvers.ContainsKey(type))
+            {
+                Console.WriteLine($"[ERROR] There is already a custom resolver for type '{type.FullName}'");
+                return;
+            }
+            if(func == null)
+            {
+                Console.WriteLine($"[ERROR] Null arg {nameof(func)}.");
+                return;
+            }
+
+            customResolvers.Add(type, func);
+        }
+
+        public void RemoveCustomResolver(Type type)
+        {
+            if (!customResolvers.ContainsKey(type))
+            {
+                Console.WriteLine($"[ERROR] There is no registered custom resolver for type '{type.FullName}'");
+                return;
+            }
+
+            customResolvers.Remove(type);
+        }
+
         public T Deserialize<T>(string xml, T toFill) where T : class
         {
             doc.LoadXml(xml);
 
             Stopwatch watch = new Stopwatch();
             watch.Start();
+
+            FieldWrapper currentField = default;
+            object rootObject = null;
+            object parentObject = null;
 
             Type rootType = toFill == null ? typeof(T) : toFill.GetType();
             T returnValue = (T)CreateAndPopulate(toFill, doc.FirstContentNode(), rootType);
@@ -103,17 +135,21 @@ namespace JXml
             return returnValue;
             object CreateAndPopulate(object existing, XmlNode rootNode, Type type)
             {
+                bool isRootAndFilling = rootObject == null && toFill != null;
                 string customClassName = rootNode.TryGetAttribute("class");
                 if(customClassName != null)
                 {
                     customClassName = customClassName.Trim();
-                    var newType = Type.GetType(customClassName, false, true);
+                    var newType = TypeResolver.Resolve(customClassName);
                     if(newType == null)
                     {
                         Console.WriteLine($"[ERROR] Node {rootNode.GetXPath()}: Could not find custom class '{customClassName}' for node {rootNode.Name}. Node will be ignored.");
                         return null;
                     }
-                    if (!type.IsAssignableFrom(newType))
+
+                    bool currentTypeCanGoIntoRoot = isRootAndFilling && newType.IsAssignableFrom(type);
+
+                    if (!type.IsAssignableFrom(newType) && !currentTypeCanGoIntoRoot)
                     {
                         string problem = type.IsInterface ? "does not implement interface" : "is not a subclass of";
                         Console.WriteLine($"[ERROR] Node {rootNode.GetXPath()}: {newType.FullName} {problem} {type.FullName}. Node will be ignored.");
@@ -122,7 +158,20 @@ namespace JXml
 
                     type = newType;
                 }
-                if(type.IsAbstract || type.IsInterface)
+
+                if (customResolvers.TryGetValue(type, out var custom))
+                {
+                    return custom.Invoke(new CustomResolverArgs()
+                    {
+                        XmlNode = rootNode,
+                        ExistingObject = existing,
+                        Field = currentField,
+                        RootObject = rootObject,
+                        ParentObject = parentObject
+                    });
+                }
+
+                if ((type.IsAbstract || type.IsInterface) && !isRootAndFilling)
                 {
                     string problem = type.IsInterface ? "an interface" : "an abstract class";
                     Console.WriteLine($"[ERROR] Node {rootNode.GetXPath()}: {type.FullName} is {problem} and so cannot be instantiated. Please use the class='typeName' attribute to specify a concrete class. Node will be ignored.");
@@ -365,6 +414,9 @@ namespace JXml
                 {
                     // Create new object (class or struct)
                     var created = existing ?? CreateInstance(type);
+                    if (rootObject == null)
+                        rootObject = created;
+                    parentObject = created;
 
                     // Get all child nodes in this node.
                     var children = rootNode.ChildNodes;
@@ -391,10 +443,13 @@ namespace JXml
 
                         Type childType = field.FieldType;
 
+                        currentField = field;
                         var childObj = CreateAndPopulate(ReadField(field, created), node, childType);
+                        currentField = FieldWrapper.Invalid;
 
                         WriteField(field, created, childObj);
                     }
+                    parentObject = null;
                     return created;
                 }
             }
@@ -500,6 +555,8 @@ namespace JXml
             rootSerializers = null;
             cachedFields?.Clear();
             cachedFields = null;
+            customResolvers?.Clear();
+            customResolvers = null;
         }
     }
 }

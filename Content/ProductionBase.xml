@@ -1,0 +1,3 @@
+<ProductionBase parent="Base" abstract="true" class="Testbed.Defs.ProductionBase">
+    <Size>20</Size>
+</ProductionBase>

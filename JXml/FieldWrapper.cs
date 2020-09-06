@@ -6,6 +6,8 @@ namespace JXml
 {
     public struct FieldWrapper
     {
+        public static FieldWrapper Invalid { get; } = new FieldWrapper((FieldInfo) null);
+
         public bool IsField
         {
             get
